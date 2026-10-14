@@ -5,7 +5,7 @@ Plataforma web para elaborar o **Relatório de Gestão (Anexo II)** da Prestaç�
 ## Como usar
 
 1. Abra `index.html` no Microsoft Edge ou no Google Chrome (duplo clique). Não é preciso instalar nada nem ter acesso à internet.
-2. Clique em **Novo relatório**, escolha o tipo de entidade e o exercício. Se quiser ver um relatório completo antes, use **Abrir exemplo preenchido**.
+2. Clique em **Novo relatório** e escolha o tipo de entidade e o exercício.
 3. Preencha as seções pelo menu lateral. Os textos-padrão já vêm adaptados ao tipo de entidade e podem ser editados.
 4. Antes de gerar o documento, confira a aba **Verificações**.
 5. Clique em **Gerar DOCX** ou **Gerar PDF**.
@@ -52,7 +52,6 @@ js/render-docx.js       geração do DOCX
 js/render-pdf.js        geração do PDF
 js/editor.js            formulários e tabelas editáveis de cada seção
 js/app.js               telas, rotas e ações
-exemplos/               relatório de exemplo (Corumbá/MS – 2025)
 vendor/                 bibliotecas de terceiros, incluídas para funcionar offline
 ```
 

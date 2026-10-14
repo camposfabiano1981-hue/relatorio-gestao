@@ -155,19 +155,10 @@
           h('div', { class: 'hero-actions' },
             h('button', { type: 'button', class: 'btn primary', onclick: newReportDialog }, '+ Novo relatório'),
             h('button', { type: 'button', class: 'btn', onclick: () => fileIn.click() }, 'Importar arquivo .json'),
-            RG.exemplos && RG.exemplos.length ? h('button', {
-              type: 'button', class: 'btn',
-              onclick: () => {
-                const ex = U.clone(RG.exemplos[0].dados);
-                ex.id = U.uid();
-                openReport(S.migrate(ex), 'preview');
-                RG.toast('Exemplo carregado. Edite à vontade: é uma cópia.');
-              },
-            }, 'Abrir exemplo preenchido') : null,
             fileIn)),
         h('section', { class: 'rep-list' },
           h('h2', {}, 'Meus relatórios'),
-          cards.length ? cards : h('p', { class: 'empty-state' }, 'Nenhum relatório ainda. Crie um novo, importe um arquivo ou abra o exemplo.'))),
+          cards.length ? cards : h('p', { class: 'empty-state' }, 'Nenhum relatório ainda. Crie um novo ou importe um arquivo .json.'))),
       footerEl());
   }
 
