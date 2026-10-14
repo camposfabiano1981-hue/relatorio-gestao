@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Relatório de Gestão – Anexo II</title>
+  <meta name="description" content="Elaboração do Relatório de Gestão (Anexo II) da Prestação de Contas Anual para a administração direta e indireta, com geração em DOCX e PDF.">  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%231F3864'/%3E%3Ctext x='16' y='21' font-family='Arial' font-size='13' font-weight='700' fill='white' text-anchor='middle'%3ERG%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+  <div id="app" aria-live="polite"></div>
+  <div id="toasts" class="toasts"></div>
+
+  <dialog id="dlg-novo" class="dialog">
+    <form method="dialog">
+      <h2>Novo relatório</h2>
+      <label class="field full"><span class="lbl">Tipo de entidade</span><select name="tipo" required></select></label>
+      <label class="field full"><span class="lbl">Denominação da unidade</span><input name="denominacao" required placeholder="Ex.: Prefeitura Municipal de …, Fundo Municipal de Saúde de …"></label>
+      <div class="grid">
+        <label class="field"><span class="lbl">Município</span><input name="municipio" required></label>
+        <label class="field"><span class="lbl">UF</span><select name="uf" required></select></label>
+        <label class="field"><span class="lbl">Exercício</span><input name="exercicio" type="number" min="2000" max="2100" required></label>
+      </div>
+      <label class="toggle"><input type="checkbox" name="consolidado"><span class="track"></span><span class="toggle-lbl">Relatório consolidado (abrange órgãos e entidades vinculados)</span></label>
+      <p class="help">Os textos-padrão são ajustados ao tipo de entidade e podem ser editados depois.</p>
+      <div class="dialog-actions">
+        <button type="button" class="btn" data-cancel>Cancelar</button>
+        <button type="submit" class="btn primary">Criar relatório</button>
+      </div>
+    </form>
+  </dialog>
+
+  <noscript>Esta aplicação requer JavaScript habilitado.</noscript>
+
+  <script src="vendor/docx.iife.js"></script>
+  <script src="vendor/pdfmake.min.js"></script>
+  <script src="vendor/vfs_fonts.js"></script>
+  <script src="js/util.js"></script>
+  <script src="js/schema.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/builder.js"></script>
+  <script src="js/render-html.js"></script>
+  <script src="js/render-docx.js"></script>
+  <script src="js/render-pdf.js"></script>
+  <script src="js/editor.js"></script>
+  <script src="exemplos/exemplo-corumba-2025.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
