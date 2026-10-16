@@ -53,6 +53,8 @@ js/render-pdf.js        geração do PDF
 js/editor.js            formulários e tabelas editáveis de cada seção
 js/app.js               telas, rotas e ações
 vendor/                 bibliotecas de terceiros, incluídas para funcionar offline
+dev/                    ferramentas de teste local (não usadas pelo site)
+CLAUDE.md               notas do projeto para o assistente Claude
 ```
 
 Para mudar os textos-padrão ou incluir um novo tipo de entidade, edite `js/schema.js`. Para incluir uma seção ou um quadro, altere `js/builder.js` (documento) e `js/editor.js` (formulário).
