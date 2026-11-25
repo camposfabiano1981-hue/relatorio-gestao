@@ -61,6 +61,6 @@ Faça `git add -A`, `git commit` e `git push`. O GitHub Pages atualiza em 1 a 2 
 
 ## Pendências e ideias
 
-- **Ativação do modo online:** o desenvolvimento ficou no ramo `multiusuario`. Falta o usuário criar o projeto no Firebase (guia em `docs/CONFIGURAR-FIREBASE.md`), preencher `js/config.js` e levar o ramo para `main`.
+- **Modo online ativado em 2026-11-25:** projeto Firebase `relatorio-gestao-corumba` em `js/config.js`, ramo `multiusuario` levado ao `main` (a pedido do usuário). Antes de publicar, foi conferido por API, sem gravar nada: login por e-mail/senha ativo, domínio do GitHub Pages autorizado, Firestore criado e com as regras de `firestore.rules` publicadas (leitura anônima só em `sistema/publico`). O documento `sistema/instalacao` não pode ser lido pelo site e só se confirma na configuração inicial. A chave `apiKey` do Firebase é pública por natureza; se o GitHub ou o Google enviarem alerta de "chave exposta", não é vazamento de senha (opcional: restringir a chave ao domínio do site no Google Cloud).
 - **Endereço do site:** o usuário pode querer trocá-lo, renomeando o repositório ou usando um domínio próprio ou da prefeitura. Avise antes que, mudando o domínio, os dados do modo local precisam ser exportados e importados; no modo online, inclua o novo domínio em Authentication › Domínios autorizados.
 - **Anexo II oficial:** o texto oficial da Resolução TCE-MS nº 273/2025 não foi encontrado online. A estrutura seguiu o relatório de Corumbá 2025 enviado pelo usuário, e convém conferir com o Anexo II oficial.
