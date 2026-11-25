@@ -110,22 +110,49 @@ Este passo define quem pode fazer a configuração inicial do sistema.
 
 ## Passo 7 – Ligar o site ao projeto
 
-No arquivo `js/config.js`, troque `firebase: null` pelo objeto copiado no passo 2, como no exemplo abaixo:
+O bloco `firebaseConfig` copiado no passo 2 precisa ser colocado no arquivo `js/config.js` do site. Esses dados identificam o projeto e **não são senha**.
+
+**Se você não guardou o bloco:** no console do Firebase, clique na engrenagem ⚙ ao lado de **Visão geral do projeto** (*Project Overview*) e depois em **Configurações do projeto** (*Project settings*). Na aba **Geral** (*General*), role até **Seus apps** (*Your apps*). No app da Web, em **Configuração do SDK** (*SDK setup and configuration*), marque **Configuração** (*Config*) e copie o bloco. Ele tem este formato:
 
 ```js
-window.RG_CONFIG = {
-  firebase: {
-    apiKey: 'AIza…',
-    authDomain: 'relatorio-gestao-corumba.firebaseapp.com',
-    projectId: 'relatorio-gestao-corumba',
-    storageBucket: 'relatorio-gestao-corumba.firebasestorage.app',
-    messagingSenderId: '…',
-    appId: '…',
-  },
+const firebaseConfig = {
+  apiKey: "AIza…",
+  authDomain: "relatorio-gestao-corumba.firebaseapp.com",
+  projectId: "relatorio-gestao-corumba",
+  storageBucket: "relatorio-gestao-corumba.firebasestorage.app",
+  messagingSenderId: "…",
+  appId: "…"
 };
 ```
 
-Publique a alteração no GitHub (`main`). O site é atualizado em 1 ou 2 minutos; use **Ctrl+F5** para recarregar.
+**Opção A (mais simples):** cole o bloco no chat do assistente Claude e diga se ele pode publicar. Ele preenche o arquivo, testa a conexão com o projeto e publica o sistema no site.
+
+**Opção B (você mesmo, pelo site do GitHub):**
+
+1. Com o GitHub aberto e logado, acesse <https://github.com/camposfabiano1981-hue/relatorio-gestao/blob/multiusuario/js/config.js>.
+2. Clique no lápis (*Edit this file*), no canto superior direito do arquivo.
+3. Na linha `firebase: null,`, apague só a palavra `null` e cole no lugar o que está **entre as chaves** do bloco, **incluindo as chaves** `{` e `}`. Mantenha a vírgula depois da chave de fechamento. Não cole `const firebaseConfig =` nem o `;` do final. O trecho fica assim:
+
+   ```js
+   window.RG_CONFIG = {
+     firebase: {
+       apiKey: "AIza…",
+       authDomain: "relatorio-gestao-corumba.firebaseapp.com",
+       projectId: "relatorio-gestao-corumba",
+       storageBucket: "relatorio-gestao-corumba.firebasestorage.app",
+       messagingSenderId: "…",
+       appId: "…"
+     },
+   ```
+
+4. Clique no botão verde **Commit changes…** e confirme em **Commit changes**.
+5. Publique o sistema no site, levando o ramo `multiusuario` para o `main`:
+   - abra <https://github.com/camposfabiano1981-hue/relatorio-gestao/compare/main...multiusuario>;
+   - clique em **Create pull request** e, na tela seguinte, de novo em **Create pull request**;
+   - clique em **Merge pull request** e depois em **Confirm merge**.
+6. Aguarde 1 ou 2 minutos e abra o site com **Ctrl+F5**. Deve aparecer a tela **Acesso restrito**, com o botão **Configuração inicial**.
+
+> Os relatórios já salvos no navegador (modo local) não se perdem: continuam acessíveis pelo link **Usar sem login** da tela de entrada.
 
 ## Passo 8 – Primeiro acesso do contador
 
