@@ -1,0 +1,320 @@
+rules_version = '2';
+
+// =====================================================================================
+// Regras de segurança do Cloud Firestore – Relatório de Gestão (Anexo II), modo online.
+//
+// Publique este arquivo em: Console do Firebase › Firestore Database › Regras › Publicar.
+//
+// Perfis:
+//   master  – contador responsável pelas UGs: cadastra usuários e UGs e acompanha tudo;
+//   gerente – gerente de GAF: preenche somente os relatórios das UGs a que foi vinculado.
+//
+// Garantias:
+//   - cada alteração de um relatório incrementa "rev" e só é aceita se, na mesma operação,
+//     for gravado o registro "historico/rev-N" com o autor e a hora do servidor;
+//   - histórico, versões e logs não podem ser alterados nem excluídos pela aplicação;
+//   - depois de enviado ao contador, o gerente não altera mais o conteúdo
+//     (o contador pode devolver para ajustes ou aprovar).
+// =====================================================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---------- Funções gerais ----------
+
+    function autenticado() {
+      return request.auth != null;
+    }
+
+    function perfilDe(uid) {
+      return get(/databases/$(database)/documents/usuarios/$(uid)).data;
+    }
+
+    // Usuário com perfil cadastrado e ativo.
+    function ativo() {
+      return autenticado() && perfilDe(request.auth.uid).ativo == true;
+    }
+
+    function master() {
+      return ativo() && perfilDe(request.auth.uid).perfil == 'master';
+    }
+
+    function novo() {
+      return request.resource.data;
+    }
+
+    function alterados() {
+      return request.resource.data.diff(resource.data).affectedKeys();
+    }
+
+    // Registro carimbado com o autor e a hora do servidor.
+    function carimbado(d) {
+      return d.uid == request.auth.uid && d.em == request.time;
+    }
+
+    function textoAte(v, max) {
+      return v is string && v.size() <= max;
+    }
+
+    // Contador indicado no documento sistema/instalacao (criado manualmente no console).
+    function instalador() {
+      return autenticado()
+        && request.auth.token.email is string
+        && request.auth.token.email.lower()
+          == get(/databases/$(database)/documents/sistema/instalacao).data.email.lower();
+    }
+
+    // ---------- Sistema ----------
+
+    // E-mail do primeiro contador; só pode ser criado e alterado pelo console do Firebase.
+    match /sistema/instalacao {
+      allow read, write: if false;
+    }
+
+    // Dados exibidos na tela de entrada (nome da entidade e se o sistema já foi instalado).
+    match /sistema/publico {
+      allow read: if true;
+      allow create, update: if master();
+      allow delete: if false;
+    }
+
+    // Configurações gerais (município, UF, prazo e brasão padrão).
+    match /sistema/config {
+      allow read: if ativo();
+      allow create, update: if master();
+      allow delete: if false;
+    }
+
+    // ---------- Usuários ----------
+
+    function usuarioValido(u) {
+      return u.nome is string && u.nome.size() > 0 && u.nome.size() <= 120
+        && u.email is string && u.email.size() <= 200
+        && u.perfil in ['master', 'gerente']
+        && u.ativo is bool;
+    }
+
+    match /usuarios/{uid} {
+      allow read: if master() || (autenticado() && request.auth.uid == uid);
+
+      allow create: if usuarioValido(novo()) && (
+        master()
+        // configuração inicial: o contador indicado em sistema/instalacao cria o próprio perfil
+        || (request.auth.uid == uid && instalador() && novo().perfil == 'master' && novo().ativo == true)
+      );
+
+      allow update: if (
+          master() && usuarioValido(novo())
+          && novo().email == resource.data.email
+          // ninguém altera o próprio perfil nem se desativa
+          && (uid != request.auth.uid || !alterados().hasAny(['perfil', 'ativo']))
+        ) || (
+          // o próprio usuário registra o último acesso e a troca da senha provisória
+          ativo() && request.auth.uid == uid
+          && alterados().hasOnly(['ultimoAcesso', 'trocarSenha'])
+          && (!alterados().hasAny(['trocarSenha']) || novo().trocarSenha == false)
+          && (!alterados().hasAny(['ultimoAcesso']) || novo().ultimoAcesso == request.time)
+        );
+
+      allow delete: if false;
+    }
+
+    // ---------- Unidades gestoras ----------
+
+    function ugValida(u) {
+      return u.nome is string && u.nome.size() > 0 && u.nome.size() <= 200
+        && u.gerentes is list && u.gerentes.size() <= 30
+        && u.ativo is bool;
+    }
+
+    match /ugs/{ugId} {
+      allow read: if master() || (ativo() && request.auth.uid in resource.data.gerentes);
+      allow create, update: if master() && ugValida(novo());
+      allow delete: if false;
+    }
+
+    // ---------- Relatórios ----------
+    // relatorios/{id}                   controle: status, progresso, UG, gerentes, prazo
+    // relatorios/{id}/conteudo/atual    conteúdo do relatório (JSON)
+    // relatorios/{id}/historico/{id}    linha do tempo; "rev-N" registra a revisão N
+    // relatorios/{id}/versoes/{id}      cópias completas (metadados) e versoesDados/{id} (conteúdo)
+    // relatorios/{id}/presenca/{uid}    quem está com o relatório aberto
+
+    function editavel(status) {
+      return status in ['nao_iniciado', 'em_preenchimento', 'devolvido'];
+    }
+
+    match /relatorios/{relId} {
+
+      function caminhoMeta() {
+        return /databases/$(database)/documents/relatorios/$(relId);
+      }
+
+      function caminhoConteudo() {
+        return /databases/$(database)/documents/relatorios/$(relId)/conteudo/atual;
+      }
+
+      function revisaoRegistrada(rev) {
+        return existsAfter(/databases/$(database)/documents/relatorios/$(relId)/historico/$('rev-' + string(rev)));
+      }
+
+      function gerenteDe(meta) {
+        return ativo() && request.auth.uid in meta.gerentes;
+      }
+
+      // Contador ou gerente vinculado ao relatório.
+      function participante() {
+        return master() || gerenteDe(get(caminhoMeta()).data);
+      }
+
+      function carimboAtualizacao() {
+        return novo().atualizadoPor == request.auth.uid && novo().atualizadoEm == request.time;
+      }
+
+      function carimbosDoGerente() {
+        return (!alterados().hasAny(['editadoEm']) || novo().editadoEm == request.time)
+          && (!alterados().hasAny(['editadoPor']) || novo().editadoPor == request.auth.uid)
+          && (!alterados().hasAny(['ultimaVersaoEm']) || novo().ultimaVersaoEm == request.time);
+      }
+
+      // Os nomes exibidos no painel precisam ser o nome cadastrado de quem grava.
+      function nomesDoGerente() {
+        let nome = perfilDe(request.auth.uid).nome;
+        return (!alterados().hasAny(['atualizadoPorNome']) || novo().atualizadoPorNome == nome)
+          && (!alterados().hasAny(['editadoPorNome']) || novo().editadoPorNome == nome)
+          && (!alterados().hasAny(['enviadoPorNome']) || novo().enviadoPorNome == nome);
+      }
+
+      function atualizacaoDoGerente() {
+        let antes = resource.data.status;
+        let depois = novo().status;
+        return alterados().hasOnly(['rev', 'status', 'atualizadoEm', 'atualizadoPor', 'atualizadoPorNome',
+            'editadoEm', 'editadoPor', 'editadoPorNome', 'progresso', 'secoes', 'secoesEditadas',
+            'ultimaVersaoEm', 'enviadoEm', 'enviadoPor', 'enviadoPorNome'])
+          && carimbosDoGerente()
+          && nomesDoGerente()
+          && (
+            // preenchimento (o primeiro salvamento passa o status para "em preenchimento")
+            (editavel(antes) && depois in [antes, 'em_preenchimento']
+              && !alterados().hasAny(['enviadoEm', 'enviadoPor', 'enviadoPorNome']))
+            // envio ao contador
+            || (editavel(antes) && depois == 'enviado'
+              && novo().enviadoPor == request.auth.uid && novo().enviadoEm == request.time)
+            // cancelamento do envio, antes da análise do contador
+            || (antes == 'enviado' && depois == 'em_preenchimento'
+              && alterados().hasOnly(['rev', 'status', 'atualizadoEm', 'atualizadoPor', 'atualizadoPorNome']))
+          );
+      }
+
+      allow read: if master() || gerenteDe(resource.data);
+
+      // Um relatório por UG e exercício: o id é "<ugId>_<exercício>".
+      allow create: if master()
+        && relId == novo().ugId + '_' + string(novo().exercicio)
+        && novo().rev == 0
+        && novo().status == 'nao_iniciado'
+        && novo().gerentes is list
+        && carimboAtualizacao()
+        && revisaoRegistrada(0)
+        && existsAfter(caminhoConteudo());
+
+      allow update: if novo().rev == resource.data.rev + 1
+        && carimboAtualizacao()
+        && revisaoRegistrada(novo().rev)
+        && novo().ugId == resource.data.ugId
+        && novo().exercicio == resource.data.exercicio
+        && (master() || (gerenteDe(resource.data) && atualizacaoDoGerente()));
+
+      allow delete: if false;
+
+      match /conteudo/{docId} {
+        allow read: if participante();
+
+        allow create: if docId == 'atual' && master()
+          && novo().rev == 0
+          && getAfter(caminhoMeta()).data.rev == 0
+          && carimboAtualizacao()
+          && textoAte(novo().dadosJSON, 1000000);
+
+        // O conteúdo só muda junto com uma nova revisão do relatório (que exige o histórico) e
+        // a partir da versão gravada no servidor ("revAnterior"), para não sobrepor alterações
+        // simultâneas de outra pessoa.
+        allow update: if docId == 'atual'
+          && novo().revAnterior == resource.data.rev
+          && novo().rev == getAfter(caminhoMeta()).data.rev
+          && getAfter(caminhoMeta()).data.rev == get(caminhoMeta()).data.rev + 1
+          && carimboAtualizacao()
+          && textoAte(novo().dadosJSON, 1000000)
+          && (master() || (gerenteDe(get(caminhoMeta()).data) && editavel(get(caminhoMeta()).data.status)));
+
+        allow delete: if false;
+      }
+
+      match /historico/{entradaId} {
+        allow read: if participante();
+
+        allow create: if carimbado(novo())
+          && textoAte(novo().tipo, 40)
+          && novo().nome == perfilDe(request.auth.uid).nome
+          && (
+            // registro de uma revisão: id "rev-N", gravado junto com a revisão N
+            (entradaId == 'rev-' + string(novo().rev)
+              && getAfter(caminhoMeta()).data.rev == novo().rev
+              && (master() || (gerenteDe(getAfter(caminhoMeta()).data)
+                && novo().tipo in ['edicao', 'secao_concluida', 'secao_reaberta', 'envio', 'envio_cancelado', 'restauracao', 'importacao'])))
+            // fatos avulsos (arquivos gerados, versões salvas)
+            || (!entradaId.matches('rev-.*') && !('rev' in novo()) && novo().tipo in ['exportacao', 'versao_salva'] && participante())
+          );
+
+        allow update, delete: if false;
+      }
+
+      match /versoes/{versaoId} {
+        allow read: if participante();
+        allow create: if carimbado(novo())
+          && novo().nome == perfilDe(request.auth.uid).nome
+          && (master() || gerenteDe(getAfter(caminhoMeta()).data))
+          && existsAfter(/databases/$(database)/documents/relatorios/$(relId)/versoesDados/$(versaoId));
+        allow update, delete: if false;
+      }
+
+      // A cópia precisa ser idêntica ao conteúdo gravado (antes ou depois da operação).
+      match /versoesDados/{versaoId} {
+        allow read: if participante();
+        allow create: if (master() || gerenteDe(getAfter(caminhoMeta()).data))
+          && existsAfter(/databases/$(database)/documents/relatorios/$(relId)/versoes/$(versaoId))
+          && (
+            (novo().rev == getAfter(caminhoConteudo()).data.rev
+              && novo().dadosJSON == getAfter(caminhoConteudo()).data.dadosJSON)
+            || (novo().rev == get(caminhoConteudo()).data.rev
+              && novo().dadosJSON == get(caminhoConteudo()).data.dadosJSON)
+          );
+        allow update, delete: if false;
+      }
+
+      match /presenca/{uid} {
+        allow read: if participante();
+        allow create, update: if request.auth.uid == uid && carimbado(novo()) && participante()
+          && novo().nome == perfilDe(request.auth.uid).nome;
+        allow delete: if autenticado() && request.auth.uid == uid;
+      }
+    }
+
+    // ---------- Log de auditoria ----------
+
+    match /logs/{logId} {
+      function autor() {
+        return getAfter(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data;
+      }
+      allow read: if master();
+      allow create: if carimbado(novo())
+        && textoAte(novo().tipo, 40)
+        && autor().ativo == true
+        && novo().perfil == autor().perfil
+        && novo().nome == autor().nome
+        && (autor().perfil == 'master' || novo().tipo in ['login', 'logout', 'senha_alterada', 'relatorio_enviado',
+          'relatorio_envio_cancelado', 'relatorio_restaurado', 'relatorio_importado', 'relatorio_exportado']);
+      allow update, delete: if false;
+    }
+  }
+}

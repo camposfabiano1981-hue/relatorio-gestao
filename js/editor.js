@@ -754,12 +754,47 @@
         h('span', { class: 'msg' }, it.msg)))))];
   };
 
+  // Seções com conteúdo do relatório (as demais são ferramentas: pré-visualização, verificações, histórico).
+  const CONTEUDO = ['capa', 'declaracao', 's1', 's2', 's3', 's4', 's5', 's6', 's7', 's8'];
+
+  V.historico = () => (RG.historico ? RG.historico.secao(ctx) : []);
+
+  /** Modo online: marcação da seção como concluída, acompanhada pelo contador no painel. */
+  function cartaoConclusao(sec) {
+    const c = ctx.conclusao;
+    const marca = c.estado(sec.id);
+    const pode = c.pode();
+    if (marca) {
+      return h('section', { class: 'card conclusao feita' },
+        h('p', {}, h('strong', {}, '✓ Seção concluída'), ` por ${marca.nome || '—'}${marca.em ? ' em ' + RG.ui.dataHora(marca.em) : ''}.`),
+        pode ? h('button', { type: 'button', class: 'btn small', onclick: () => c.marcar(sec.id, false) }, 'Desmarcar') : null);
+    }
+    const erros = B.validate(ctx.report).filter((i) => i.secao === sec.id && i.nivel === 'erro').length;
+    return h('section', { class: 'card conclusao' },
+      h('p', {}, h('strong', {}, 'Conclusão da seção: '), erros
+        ? `há ${erros} erro(s) nesta seção (veja Verificações). Corrija-os antes de concluir.`
+        : 'depois de revisar esta seção, marque-a como concluída. O contador acompanha o andamento pelo painel.'),
+      pode ? h('button', { type: 'button', class: 'btn primary small', disabled: erros ? true : null, onclick: () => c.marcar(sec.id, true) }, 'Marcar seção como concluída') : null);
+  }
+
+  /**
+   * context = { report, changed(), rerender() } e, no modo online, também
+   * { somenteLeitura: motivo, conclusao: { estado(sec), pode(), marcar(sec, bool) }, sessao, substituir(dados) }.
+   */
   function render(container, context, sectionId) {
     ctx = context;
     const sec = SECTIONS.find((s) => s.id === sectionId) || SECTIONS[0];
     container.innerHTML = '';
     container.append(h('h2', { class: 'section-title' }, sec.nav));
-    container.append(...[].concat(V[sec.id]()).flat(Infinity).filter(Boolean));
+    const itens = [].concat(V[sec.id]()).flat(Infinity).filter(Boolean);
+    const conteudo = CONTEUDO.includes(sec.id);
+    if (ctx.somenteLeitura && conteudo) {
+      container.append(h('div', { class: 'notice info' }, h('strong', {}, 'Somente leitura. '), ctx.somenteLeitura));
+      container.append(h('fieldset', { class: 'somente-leitura', disabled: true }, itens));
+    } else {
+      container.append(...itens);
+    }
+    if (ctx.conclusao && conteudo) container.append(cartaoConclusao(sec));
     const idx = SECTIONS.indexOf(sec);
     const prev = SECTIONS[idx - 1], next = SECTIONS[idx + 1];
     container.append(h('div', { class: 'pager' },
@@ -767,5 +802,5 @@
       next ? h('a', { class: 'btn primary', href: `#/r/${ctx.report.id}/${next.id}` }, next.nav + ' →') : h('span')));
   }
 
-  RG.editor = { SECTIONS, render };
+  RG.editor = { SECTIONS, CONTEUDO, render };
 })(window.RG = window.RG || {});

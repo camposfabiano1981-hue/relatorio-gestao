@@ -30,8 +30,11 @@
     return `<table class="doc-table"><thead>${head}</thead><tbody>${body}</tbody></table>`;
   }
 
+  // Só aceita imagem PNG/JPG em base64: no modo online o conteúdo pode vir de outro usuário.
+  const LOGO_VALIDO = /^data:image\/(png|jpe?g);base64,[A-Za-z0-9+/=]+$/;
+
   function coverHTML(b) {
-    const logo = b.logo ? `<img class="cover-logo" src="${b.logo.data}" alt="">` : '';
+    const logo = b.logo && LOGO_VALIDO.test(String(b.logo.data)) ? `<img class="cover-logo" src="${esc(b.logo.data)}" alt="">` : '';
     return `<div class="cover">${logo}
       <div class="cv-estado">${esc(b.estado)}</div>
       ${b.orgaoSuperior ? `<div class="cv-sup">${esc(b.orgaoSuperior)}</div>` : ''}

@@ -1,0 +1,5 @@
+node_modules/
+saida/
+*.log
+# cópia de ../../firestore.rules feita pelos scripts
+firestore.rules

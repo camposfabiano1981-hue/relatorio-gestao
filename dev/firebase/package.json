@@ -1,0 +1,16 @@
+{
+  "name": "relatorio-gestao-testes",
+  "private": true,
+  "description": "Testes das regras do Firestore e testes ponta a ponta com os emuladores do Firebase (não fazem parte do site).",
+  "scripts": {
+    "copiar-regras": "node -e \"require('fs').copyFileSync('../../firestore.rules', 'firestore.rules')\"",
+    "emuladores": "npm run copiar-regras && firebase emulators:start --only auth,firestore --project demo-rg",
+    "test:regras": "npm run copiar-regras && firebase emulators:exec --only firestore --project demo-rg \"node --test --test-reporter=spec regras.test.js\"",
+    "test:e2e": "npm run copiar-regras && firebase emulators:exec --only auth,firestore --project demo-rg \"node e2e.js\""
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^6.0.0",
+    "firebase": "^13.1.0",
+    "firebase-tools": "^15.37.0"
+  }
+}
