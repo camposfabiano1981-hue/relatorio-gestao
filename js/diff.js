@@ -192,7 +192,7 @@
     programa: 'Programa / Ação', metaPrevista: 'Meta física prevista', metaRealizada: 'Meta física realizada',
     dotacao: 'Dotação', executado: 'Valor executado', justificativa: 'Justificativa', categoria: 'Categoria',
     saldoInicial: 'Saldo inicial', inscritos: 'Inscritos', baixas: 'Baixas', saldoFinal: 'Saldo final',
-    cargo: 'Cargo', nome: 'Nome', inicio: 'Início', fim: 'Fim', vinculo: 'Vínculo', qtd: 'Quantidade',
+    cargo: 'Cargo', nome: 'Nome', registro: 'Registro profissional', portaria: 'Portaria de nomeação', inicio: 'Início', fim: 'Fim', vinculo: 'Vínculo', qtd: 'Quantidade',
     bruta: 'Despesa bruta', naoComputadas: 'Despesas não computadas', atividade: 'Categoria / atividade',
     postos: 'Postos', empresa: 'Empresa', valor: 'Valor', tipo: 'Tipo', fonte: 'Fonte / regime', segurados: 'Segurados',
     orgao: 'Órgão / conselho', funcao: 'Função', qtde: 'Qtde', ug: 'Unidade gestora', entidade: 'Entidade / objeto',

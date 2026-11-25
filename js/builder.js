@@ -154,8 +154,16 @@
 
     add(h3(`Responsáveis pela Unidade Gestora – Exercício ${ano}`));
     const periodo = (x) => (x.inicio || x.fim ? `${U.dateBR(x.inicio)} a ${U.dateBR(x.fim)}` : '');
-    add(table([{ header: 'Cargo', w: 38 }, { header: 'Nome', w: 37 }, { header: 'Período', w: 25, align: 'center' }],
-      s1.responsaveis.map((x) => [cell(x.cargo), cell(x.nome), C(periodo(x))])));
+    const preenchido = (k) => s1.responsaveis.some((x) => String(x[k] || '').trim());
+    const comReg = preenchido('registro'), comPort = preenchido('portaria');
+    const colResp = [{ header: 'Cargo', w: 24 }, { header: 'Nome', w: 25 }];
+    if (comReg) colResp.push({ header: 'Registro Profissional', w: 14 });
+    if (comPort) colResp.push({ header: 'Portaria de Nomeação', w: 18 });
+    colResp.push({ header: 'Período', w: 19, align: 'center' });
+    const somaResp = colResp.reduce((a, c) => a + c.w, 0);
+    colResp.forEach((c) => { c.w = Math.round((c.w * 1000) / somaResp) / 10; });
+    add(table(colResp, s1.responsaveis.map((x) => [cell(x.cargo), cell(x.nome)]
+      .concat(comReg ? [C(x.registro)] : [], comPort ? [cell(x.portaria)] : [], [C(periodo(x))]))));
 
     add(h3('Estrutura Organizacional'), P(s1.estrutura));
     const unidades = String(s1.unidades || '').split(/\r?\n/).map((l) => l.replace(/^[-•*]\s*/, '').trim()).filter(Boolean);

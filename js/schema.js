@@ -150,7 +150,7 @@
       direta: ['Prefeito(a) Municipal', 'Vice-Prefeito(a)', 'Secretário(a) Municipal de Finanças', 'Procurador(a)-Geral do Município', 'Controlador(a)-Geral', 'Contador(a) Responsável'],
       camara: ['Presidente da Câmara', 'Primeiro(a) Secretário(a)', 'Controlador(a) Interno(a)', 'Contador(a) Responsável'],
     }[tipo] || ['Diretor(a)-Presidente / Gestor(a)', 'Ordenador(a) de Despesas', 'Controlador(a) Interno(a)', 'Contador(a) Responsável'];
-    return cargos.map((cargo) => ({ cargo, nome: '', inicio: `${ano}-01-01`, fim: `${ano}-12-31` }));
+    return cargos.map((cargo) => ({ cargo, nome: '', registro: '', portaria: '', inicio: `${ano}-01-01`, fim: `${ano}-12-31` }));
   }
 
   const rpPadrao = () => [
@@ -268,6 +268,11 @@
       }
     })(r, base);
     if (!Array.isArray(r.s3.folha) || r.s3.folha.length !== 12) r.s3.folha = folhaPadrao();
+    // Registro profissional e portaria de nomeação dos responsáveis (incluídos em 2026-11).
+    (r.s1.responsaveis || []).forEach((p) => {
+      if (p.registro === undefined) p.registro = '';
+      if (p.portaria === undefined) p.portaria = '';
+    });
     r.schema = SCHEMA_VERSION;
     return r;
   }
