@@ -46,23 +46,53 @@ Situações do relatório: **Não iniciado → Em preenchimento → Enviado ao c
 
 ## Passo 3 – Ativar o login por e-mail e senha
 
-1. No menu lateral, abra **Criação › Authentication** e clique em **Vamos começar**.
-2. Na aba **Método de login**, escolha **E-mail/senha**, ative **somente a primeira opção** ("E-mail/senha") e salve.
-3. Na aba **Configurações**:
-   - em **Domínios autorizados**, clique em **Adicionar domínio** e informe `camposfabiano1981-hue.github.io`;
-   - em **Ações do usuário**, mantenha **Ativar criação (inscrição)** marcada. O sistema usa essa opção quando o contador cadastra um usuário. Uma conta criada por fora do sistema não acessa nada, porque não tem perfil cadastrado.
-4. Na aba **Modelos**, escolha o idioma **Português (Brasil)**. O e-mail de "Esqueci minha senha" sai em português.
+O console do Firebase pode aparecer em português ou em inglês; os nomes em inglês estão entre parênteses.
+
+**3.1 – Abrir o Authentication**
+
+1. No console do Firebase, abra o seu projeto.
+2. No menu da esquerda, clique em **Segurança** (*Security*) e depois em **Authentication**. Atalho: abra <https://console.firebase.google.com/project/_/authentication/> e escolha o projeto.
+3. Se aparecer o botão **Vamos começar** (*Get started*), clique nele.
+
+**3.2 – Ligar o login por e-mail e senha (obrigatório)**
+
+1. Clique na aba **Método de login** (*Sign-in method*).
+2. Na lista de provedores, clique em **E-mail/senha** (*Email/Password*).
+3. Ligue a primeira chave, **E-mail/senha**. Deixe desligada a segunda, **Link do e-mail (login sem senha)** (*Email link*).
+4. Clique em **Salvar** (*Save*).
+5. Confira: "E-mail/senha" aparece na lista de provedores como **Ativado** (*Enabled*).
+
+**3.3 – Conferir as ações do usuário (em geral, não é preciso mudar nada)**
+
+1. Clique na aba **Configurações** (*Settings*).
+2. Em **Gerenciamento de contas de usuário** (*User account management*), clique em **Ações do usuário** (*User actions*).
+3. Se houver a opção **Ativar criação (inscrição)** (*Enable create (sign-up)*), ela precisa ficar **marcada**, como já vem. O sistema usa essa permissão quando o contador cadastra um usuário. Uma conta criada por fora do sistema não acessa nada, porque não tem perfil.
+4. A **Proteção contra enumeração de e-mails** (*Email enumeration protection*) pode ficar como está: vem ligada nos projetos novos, e o sistema funciona com ela.
+5. Só clique em **Salvar** se tiver mudado alguma coisa.
+
+**3.4 – Domínio do site (recomendado)**
+
+1. Ainda na aba **Configurações**, clique em **Domínios autorizados** (*Authorized domains*).
+2. Clique em **Adicionar domínio** (*Add domain*), digite `camposfabiano1981-hue.github.io` (sem `https://` e sem `/relatorio-gestao`) e confirme.
+
+O login por e-mail e senha não exige esse passo, mas ele deixa o projeto pronto para outros recursos de login no futuro.
+
+**3.5 – Idioma dos e-mails (opcional)**
+
+O próprio sistema já pede o e-mail de "Esqueci minha senha" em português. Para que o português também seja o idioma padrão do projeto, use a aba **Modelos** (*Templates*) e altere o idioma do modelo.
 
 ## Passo 4 – Criar o banco de dados (Firestore)
 
-1. Abra **Criação › Firestore Database** e clique em **Criar banco de dados**.
-2. Se for perguntado, escolha a edição **Standard**.
-3. Local: **`southamerica-east1 (São Paulo)`**. Os dados ficam no Brasil, e esse local não pode ser trocado depois.
-4. Escolha **Iniciar no modo de produção** e conclua.
+1. No menu da esquerda, clique em **Bancos de dados e armazenamento** (*Databases & Storage*) e depois em **Firestore**. Atalho: <https://console.firebase.google.com/project/_/firestore>.
+2. Clique em **Criar banco de dados** (*Create database*).
+3. Se o console perguntar a edição, escolha **Standard**.
+4. Local: **`southamerica-east1 (São Paulo)`**. Os dados ficam no Brasil, e esse local não pode ser trocado depois.
+5. Modo inicial das regras: escolha **Modo de produção** (*Production mode*), que bloqueia todo acesso até as regras do passo 5 serem publicadas. **Não** escolha o modo de teste (*Test mode*): ele deixa qualquer pessoa ler e alterar os dados.
+6. Clique em **Criar** (*Create*).
 
 ## Passo 5 – Publicar as regras de segurança
 
-1. No Firestore, abra a aba **Regras**.
+1. No Firestore, abra a aba **Regras** (*Rules*).
 2. Apague todo o texto e cole o conteúdo completo do arquivo [`firestore.rules`](../firestore.rules) deste repositório.
 3. Clique em **Publicar**.
 
@@ -72,7 +102,7 @@ Situações do relatório: **Não iniciado → Em preenchimento → Enviado ao c
 
 Este passo define quem pode fazer a configuração inicial do sistema.
 
-1. No Firestore, abra a aba **Dados** e clique em **Iniciar coleção**.
+1. No Firestore, abra a aba **Dados** (*Data*) e clique em **Iniciar coleção** (*Start collection*).
 2. ID da coleção: `sistema` › **Próxima**.
 3. ID do documento: `instalacao`.
 4. Campo `email`, tipo **string**, valor: o e-mail do primeiro contador (por exemplo, o seu).
@@ -141,7 +171,7 @@ O modo local continua disponível pelo link "Usar sem login" da tela de entrada.
 | "Este e-mail não é o indicado na configuração inicial" | O e-mail digitado é diferente do campo `email` do documento `sistema/instalacao` (passo 6). |
 | "Seu acesso ainda não foi liberado" | A conta existe, mas não tem perfil. O contador precisa cadastrar o usuário em **Usuários**. |
 | "Operação não permitida para o seu perfil…" | O relatório mudou de situação (por exemplo, foi enviado ou aprovado), ou as regras do passo 5 não foram publicadas ou estão desatualizadas. |
-| "A criação de contas está desativada no Firebase" | Marque **Ativar criação (inscrição)** (passo 3). |
-| "O login por e-mail e senha não está ativado" | Faça o passo 3. |
+| "A criação de contas está desativada no Firebase" | Marque **Ativar criação (inscrição)** (passo 3.3). |
+| "O login por e-mail e senha não está ativado" | Faça o passo 3.2. |
 | "Limite diário do plano gratuito…" | Veja "Limites do plano gratuito" acima. |
 | Tela "Não foi possível conectar" | Verifique a internet e o conteúdo de `js/config.js`. |
