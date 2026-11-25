@@ -94,7 +94,8 @@ const paginas = [];
 const toastsErro = [];
 const TOASTS_ESPERADOS = [/não tem acesso a este relatório/];
 async function novaPagina(browser, nome) {
-  const ctx = await browser.newContext({ viewport: { width: 1360, height: 900 } });
+  // ESCALA=2 gera capturas em alta resolução, sem os avisos (para apresentação)
+  const ctx = await browser.newContext({ viewport: { width: 1360, height: 900 }, deviceScaleFactor: +(process.env.ESCALA || 1) });
   const page = await ctx.newPage();
   page.on('pageerror', (e) => erros.push(`[${nome}] pageerror: ${e.message}`));
   page.on('console', (m) => {
@@ -122,6 +123,7 @@ async function foto(page, nome) {
     return (t.includes('[object ') ? '[object …] ' : '') + (nulo ? 'texto null/undefined' : '');
   });
   if (lixo) erros.push(`[${nome}] texto indevido na tela: ${lixo}`);
+  if (process.env.ESCALA) await page.evaluate(() => document.querySelectorAll('#toasts .toast').forEach((t) => t.remove()));
   await page.screenshot({ path: path.join(SAIDA, nome + '.png'), fullPage: false });
 }
 
