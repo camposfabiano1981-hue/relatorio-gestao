@@ -130,7 +130,7 @@
     sec = 'declaracao';
     add(h1('DECLARAÇÃO DE VERACIDADE DAS INFORMAÇÕES'), { t: 'spacer', h: 24 });
     add(P(r.declaracao.texto));
-    add({ t: 'spacer', h: 18 }, { t: 'signs', local: localData(r.declaracao.data), items: [{ nome: r.declaracao.nome, cargo: r.declaracao.cargo }] });
+    add({ t: 'spacer', h: 30 }, { t: 'signs', local: localData(r.declaracao.data), items: [{ nome: r.declaracao.nome, cargo: r.declaracao.cargo }] });
     add({ t: 'pagebreak' });
 
     let n = 0;
@@ -342,7 +342,7 @@
     }
     add(secao('CONSIDERAÇÕES FINAIS'), P(s8.texto));
     const assin = (s8.assinaturas || []).filter((a) => a.nome || a.cargo);
-    add({ t: 'spacer', h: 18 }, {
+    add({ t: 'spacer', h: 30 }, {
       t: 'signs', local: localData(c.dataRelatorio),
       items: assin.length ? assin : [{ nome: r.declaracao.nome, cargo: r.declaracao.cargo }],
     });

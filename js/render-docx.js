@@ -146,7 +146,7 @@
 
     /** Local/data e assinaturas: uma centralizada ou, havendo várias, duas por linha em tabela sem bordas. */
     function signsEls(items, local) {
-      const head = local ? [new Paragraph({ alignment: AlignmentType.RIGHT, keepNext: true, spacing: { after: 720 }, children: [new TextRun({ text: local })] })] : [];
+      const head = local ? [new Paragraph({ alignment: AlignmentType.RIGHT, keepNext: true, spacing: { after: 1440 }, children: [new TextRun({ text: local })] })] : [];
       if (items.length === 1) return head.concat(signParas(items[0], '_______________________________________________'));
       const none = { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' };
       const noBorders = { top: none, bottom: none, left: none, right: none, insideHorizontal: none, insideVertical: none };

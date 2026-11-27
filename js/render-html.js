@@ -68,7 +68,7 @@
         case 'table': parts.push(tableHTML(b)); break;
         case 'spacer': parts.push(`<div style="height:${b.h}px"></div>`); break;
         case 'signs':
-          if (b.local) parts.push(`<p class="d-p" style="text-align:right;margin-bottom:44px">${esc(b.local)}</p>`);
+          if (b.local) parts.push(`<p class="d-p" style="text-align:right;margin-bottom:90px">${esc(b.local)}</p>`);
           parts.push(`<div class="signs${b.items.length > 1 ? ' multi' : ''}">` + b.items.map((a) => `<div class="sign"><div class="sign-line"></div><div class="sign-nome">${esc((a.nome || '').toUpperCase())}</div><div class="sign-cargo">${esc(a.cargo)}</div></div>`).join('') + '</div>');
           break;
         default: break;

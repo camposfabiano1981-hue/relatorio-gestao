@@ -124,7 +124,7 @@
             stack: [{ text: line }, { text: (a.nome || '').toUpperCase(), bold: true, margin: [0, 2, 0, 0] }, { text: a.cargo || '' }],
           });
           // Local/data fica no mesmo bloco inquebrável que a primeira linha de assinaturas.
-          const local = b.local ? [{ text: b.local, alignment: 'right', margin: [0, 0, 0, 36] }] : [];
+          const local = b.local ? [{ text: b.local, alignment: 'right', margin: [0, 0, 0, 72] }] : [];
           if (b.items.length === 1) {
             emit({ stack: local.concat(sign(b.items[0], '_______________________________________________')), unbreakable: true }, false);
             break;
