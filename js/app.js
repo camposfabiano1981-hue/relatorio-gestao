@@ -438,7 +438,7 @@
       aoPresenca: (lista) => { presentes = lista; desenharPresenca(); },
       aoErro: (msg) => {
         RG.toast(msg, 'erro');
-        if (/acesso/.test(msg)) { fecharSessao(); location.hash = '#/'; }
+        if (/acesso|excluído/.test(msg)) { fecharSessao(); location.hash = '#/'; }
       },
     };
   }
@@ -524,6 +524,12 @@
     }
   }
 
+  async function excluirDoEditor() {
+    const meta = sessao.meta;
+    fecharSessao();
+    if (await RG.painel.excluir(meta)) location.hash = '#/'; else route();
+  }
+
   async function alterarPrazo() {
     const v = await RG.ui.perguntar('Prazo para envio', 'Data limite para o gerente enviar o relatório', { tipo: 'date', valor: sessao.meta.prazo || '' });
     if (v !== null) await acao(() => sessao.prazo(v || null), v ? `Prazo definido: ${U.dateBR(v)}.` : 'Prazo removido.');
@@ -539,6 +545,10 @@
     const editavel = N.STATUS_EDITAVEL.includes(m.status);
     const botoes = [];
     const b = (rotulo, fn, cls) => h('button', { type: 'button', class: 'btn small ' + (cls || ''), onclick: fn }, rotulo);
+    if (m.arquivado && master) {
+      if (!m.excluindo) botoes.push(b('Desarquivar', () => acao(() => N.arquivar(m, false), 'Relatório desarquivado.'), 'primary'));
+      botoes.push(b(m.excluindo ? 'Concluir exclusão' : 'Excluir definitivamente', excluirDoEditor, 'danger'));
+    }
     if (!m.arquivado) {
       if (gerente && editavel) botoes.push(b('Enviar ao contador', enviar, 'primary'));
       if (gerente && m.status === 'enviado') botoes.push(b('Cancelar envio', cancelarEnvio));
@@ -554,7 +564,8 @@
     el.innerHTML = '';
     el.append(
       h('div', { class: 'faixa-info' },
-        RG.ui.selo(m.status), N.atrasado(m) ? RG.ui.seloAtraso() : null, m.arquivado ? h('span', { class: 'selo' }, 'Arquivado') : null,
+        RG.ui.selo(m.status), N.atrasado(m) ? RG.ui.seloAtraso() : null,
+        m.excluindo ? h('span', { class: 'selo atraso' }, 'Exclusão incompleta') : m.arquivado ? h('span', { class: 'selo' }, 'Arquivado') : null,
         RG.ui.barraSecoes(m), h('span', { class: 'help' }, info.join(' · '))),
       h('div', { class: 'faixa-acoes' }, botoes));
     if (m.status === 'devolvido' && m.motivoDevolucao) {

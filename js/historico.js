@@ -16,7 +16,7 @@
     devolucao: ['Devolvido para ajustes', 'alerta'], aprovacao: ['Aprovado', 'ok'], reabertura: ['Reaberto para edição', 'neutro'],
     restauracao: ['Versão restaurada', 'alerta'], importacao: ['Arquivo importado', 'alerta'], prazo: ['Prazo', 'neutro'],
     vinculo: ['Dados da UG', 'neutro'], arquivamento: ['Arquivado', 'alerta'], desarquivamento: ['Desarquivado', 'neutro'],
-    exportacao: ['Arquivo gerado', 'neutro'], versao_salva: ['Versão salva', 'neutro'],
+    exportacao: ['Arquivo gerado', 'neutro'], versao_salva: ['Versão salva', 'neutro'], exclusao: ['Exclusão iniciada', 'alerta'],
   };
 
   const MOTIVOS_VERSAO = {
@@ -33,7 +33,7 @@
     relatorio_envio_cancelado: 'Envio cancelado', relatorio_devolvido: 'Relatório devolvido', relatorio_aprovado: 'Relatório aprovado',
     relatorio_reaberto: 'Relatório reaberto', relatorio_arquivado: 'Relatório arquivado', relatorio_desarquivado: 'Relatório desarquivado',
     relatorio_prazo: 'Prazo do relatório', relatorio_restaurado: 'Versão restaurada', relatorio_importado: 'Arquivo importado',
-    relatorio_exportado: 'Arquivo gerado (DOCX/PDF/JSON)',
+    relatorio_exportado: 'Arquivo gerado (DOCX/PDF/JSON)', relatorio_excluido: 'Relatório excluído',
   };
 
   // ---------- Diferenças ----------
@@ -227,7 +227,7 @@
     return [
       h('section', { class: 'card' },
         h('h3', { class: 'card-title' }, 'Versões salvas'),
-        h('p', { class: 'card-desc' }, 'Cópias completas do relatório, gravadas automaticamente na criação, na primeira gravação de cada dia, no envio, na aprovação e antes de restaurações e importações. Nenhuma versão pode ser apagada.'),
+        h('p', { class: 'card-desc' }, 'Cópias completas do relatório, gravadas automaticamente na criação, na primeira gravação de cada dia, no envio, na aprovação e antes de restaurações e importações. As versões só são apagadas se o contador excluir definitivamente o relatório.'),
         h('div', { class: 'table-actions' },
           h('button', {
             type: 'button', class: 'btn small',
@@ -242,7 +242,7 @@
         caixaVersoes),
       h('section', { class: 'card' },
         h('h3', { class: 'card-title' }, 'Linha do tempo'),
-        h('p', { class: 'card-desc' }, 'Todas as alterações do relatório, com autor, data e hora do servidor e o que foi alterado em cada campo. Os registros não podem ser alterados nem excluídos.'),
+        h('p', { class: 'card-desc' }, 'Todas as alterações do relatório, com autor, data e hora do servidor e o que foi alterado em cada campo. Os registros não podem ser alterados; só são apagados na exclusão definitiva do relatório pelo contador.'),
         lista, mais),
     ];
   }

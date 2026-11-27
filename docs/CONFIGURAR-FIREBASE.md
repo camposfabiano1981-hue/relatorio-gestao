@@ -26,7 +26,7 @@ Situações do relatório: **Não iniciado → Em preenchimento → Enviado ao c
 
 - cada gerente só acessa as UGs a que foi vinculado;
 - toda alteração gera um registro no histórico, com o autor e a hora do servidor;
-- o histórico, as versões e o log não podem ser apagados nem alterados, nem mesmo pelos contadores.
+- o histórico, as versões e o log não podem ser apagados nem alterados. A única exceção é a **exclusão definitiva** de um relatório inteiro, feita só pelo contador com a própria senha: o sistema baixa antes uma cópia (.json) e registra a exclusão no log, que nunca é apagado.
 
 ---
 

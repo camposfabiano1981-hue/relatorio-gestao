@@ -373,3 +373,34 @@ test('histórico e painel não aceitam nome de outra pessoa nem eventos exclusiv
   await assertFails(g.collection(`relatorios/${id}/historico`).add({ tipo: 'aprovacao', uid: GER.uid, nome: GER.nome, em: ST() }));
   await assertSucceeds(g.collection(`relatorios/${id}/historico`).add({ tipo: 'versao_salva', uid: GER.uid, nome: GER.nome, em: ST() }));
 });
+
+/** Apaga todas as subcoleções de um relatório com o contexto indicado (como faz o aplicativo). */
+async function apagarRegistros(d, relId) {
+  for (const sub of ['presenca', 'historico', 'versoes', 'versoesDados', 'conteudo']) {
+    const s = await d.collection(`relatorios/${relId}/${sub}`).get();
+    for (const doc of s.docs) await doc.ref.delete();
+  }
+}
+
+test('arquivado: o gerente não edita; exclusão definitiva só pelo contador e depois de marcada', async () => {
+  const id = await relatorioPadrao();
+  const m = db(MASTER), g = db(GER);
+  // sem a marca de exclusão, nem o contador apaga
+  await assertFails(m.doc(`relatorios/${id}`).delete());
+  await assertFails(m.doc(`relatorios/${id}/historico/rev-0`).delete());
+  // arquivado: o gerente não edita conteúdo nem controle
+  await assertSucceeds(revisao(m, MASTER, id, 0, { tipo: 'arquivamento', meta: { arquivado: true } }));
+  await assertFails(revisao(g, GER, id, 1, { dadosJSON: '{"x":1}', meta: { status: 'em_preenchimento' } }));
+  await assertFails(revisao(g, GER, id, 1, { meta: { secoes: {} } }));
+  // o gerente não marca a exclusão nem apaga nada
+  await assertFails(revisao(g, GER, id, 1, { meta: { excluindo: true } }));
+  await assertSucceeds(revisao(m, MASTER, id, 1, { tipo: 'exclusao', meta: { excluindo: true } }));
+  await assertFails(g.doc(`relatorios/${id}/historico/rev-0`).delete());
+  await assertFails(g.doc(`relatorios/${id}/conteudo/atual`).delete());
+  await assertFails(g.doc(`relatorios/${id}`).delete());
+  await assertFails(db(MASTER2).collection('logs').doc('qualquer').delete());
+  // o contador apaga os registros e o controle; o mesmo relatório pode ser criado de novo
+  await assertSucceeds(apagarRegistros(m, id));
+  await assertSucceeds(m.doc(`relatorios/${id}`).delete());
+  await assertSucceeds(criarRelatorio(m, MASTER, 'ugA', 2025, ['ger1']));
+});

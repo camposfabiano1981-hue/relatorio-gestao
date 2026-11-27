@@ -123,7 +123,30 @@
       h('span', {}, h('strong', {}, rotulo), ajuda ? h('small', {}, ajuda) : null));
     const radAnterior = opcao('anterior', 'Copiar do relatório do exercício anterior', 'Mantém cadastros e textos, zera os valores e leva o saldo final de Restos a Pagar para o saldo inicial.');
     const info = h('p', { class: 'help' });
+    const aviso = h('div', { class: 'notice warn', hidden: true });
+    let dlgNovo = null;
+    const desenharAviso = () => {
+      aviso.innerHTML = '';
+      const existe = selUG.value && est.relatorios.find((x) => x.ugId === selUG.value && x.exercicio === +ex.value);
+      aviso.hidden = !existe;
+      if (!existe) return;
+      const b = (rotulo, fn, cls) => h('button', { type: 'button', class: 'btn small ' + (cls || ''), onclick: fn }, rotulo);
+      if (existe.arquivado) {
+        aviso.append(h('p', {}, `Já existe relatório desta UG para ${ex.value}, ${existe.excluindo ? 'com a exclusão incompleta' : 'mas ele está arquivado'}. Só pode haver um relatório por UG e exercício.`),
+          h('div', { class: 'table-actions' },
+            existe.excluindo ? null : b('Desarquivar e abrir', async () => {
+              try { await N.arquivar(existe, false); dlgNovo.close(); location.hash = `#/r/${existe.id}/capa`; } catch (e) { RG.toast(e.message, 'erro'); }
+            }),
+            b(existe.excluindo ? 'Concluir a exclusão' : 'Excluir o arquivado e criar um novo', async () => {
+              if (await excluir(existe)) { desenharAviso(); setTimeout(desenharAviso, 800); }
+            }, 'danger')));
+      } else {
+        aviso.append(h('p', {}, `Já existe relatório desta UG para ${ex.value} (${N.STATUS[existe.status] || existe.status}).`),
+          h('div', { class: 'table-actions' }, b('Abrir o relatório existente', () => { dlgNovo.close(); location.hash = `#/r/${existe.id}/capa`; })));
+      }
+    };
     const atualizar = () => {
+      desenharAviso();
       const tem = selUG.value && est.relatorios.some((r) => r.ugId === selUG.value && r.exercicio === +ex.value - 1);
       const inp = radAnterior.querySelector('input');
       inp.disabled = !tem;
@@ -144,14 +167,16 @@
           radAnterior,
           opcao('arquivo', 'Importar arquivo .json', 'Relatório preenchido no modo local e exportado pelo botão “Exportar dados”.'),
           arquivo),
+        aviso,
         info,
       ],
       botoes: [{ rotulo: 'Cancelar', valor: null }, { rotulo: 'Criar relatório', valor: true, primario: true, enviar: true }],
-      aoAbrir: atualizar,
+      aoAbrir: (form, dlg) => { dlgNovo = dlg; atualizar(); },
       validar: async (d) => {
         const ug = ugs.find((u) => u.id === d.ug);
         const exercicioN = +d.exercicio;
-        if (est.relatorios.some((x) => x.ugId === ug.id && x.exercicio === exercicioN)) return `Já existe relatório de ${rotuloUG(ug)} para ${exercicioN}.`;
+        const existe = est.relatorios.find((x) => x.ugId === ug.id && x.exercicio === exercicioN);
+        if (existe) { desenharAviso(); return `Já existe relatório de ${rotuloUG(ug)} para ${exercicioN}${existe.arquivado ? ' (arquivado)' : ''}. Use as opções do aviso acima.`; }
         try {
           const dados = await montarDados(ug, exercicioN, d.origem, est.config, arquivo.files[0]);
           await N.criarRelatorio(ug, exercicioN, dados, d.origem, d.prazo || null);
@@ -223,11 +248,55 @@
 
   async function arquivar(m) {
     const ok = await UI.confirmar(m.arquivado
-      ? `Desarquivar o relatório ${tituloRel(m)} – ${m.exercicio}? Ele volta a aparecer nas listas.`
-      : `Arquivar o relatório ${tituloRel(m)} – ${m.exercicio}? Ele deixa de aparecer nas listas, mas o conteúdo, o histórico e as versões são preservados e ele pode ser desarquivado.`,
-    { ok: m.arquivado ? 'Desarquivar' : 'Arquivar', perigo: !m.arquivado });
+      ? `Desarquivar o relatório ${tituloRel(m)} – ${m.exercicio}? Ele volta à lista principal, ao acompanhamento e ao gerente de GAF.`
+      : `Arquivar o relatório ${tituloRel(m)} – ${m.exercicio}? Ele sai da lista principal, do acompanhamento e da tela do gerente, e fica na seção “Arquivados”, de onde pode ser desarquivado ou excluído. O conteúdo, o histórico e as versões são preservados.`,
+    { ok: m.arquivado ? 'Desarquivar' : 'Arquivar' });
     if (!ok) return;
-    try { await N.arquivar(m, !m.arquivado); } catch (e) { RG.toast(e.message, 'erro'); }
+    try {
+      await N.arquivar(m, !m.arquivado);
+      RG.toast(m.arquivado ? 'Relatório desarquivado.' : 'Relatório arquivado. Ele está na seção “Arquivados”, no fim da página.');
+    } catch (e) { RG.toast(e.message, 'erro'); }
+  }
+
+  /** Baixa a cópia de segurança (conteúdo e histórico) antes da exclusão definitiva. */
+  function baixarCopia(m, copia) {
+    const nome = `RelatorioGestao_${U.slug(m.ugSigla || m.ugNome) || 'relatorio'}_${m.exercicio}_copia_antes_da_exclusao_${U.todayISO()}.json`;
+    const controle = {
+      ugNome: m.ugNome, ugSigla: m.ugSigla, exercicio: m.exercicio, status: m.status, rev: m.rev,
+      criadoEm: m.criadoEm, criadoPorNome: m.criadoPorNome, editadoEm: m.editadoEm, editadoPorNome: m.editadoPorNome,
+    };
+    const conteudo = {
+      formato: 'relatorio-gestao-anexo2', versao: copia.conteudo ? copia.conteudo.schema : null, relatorio: copia.conteudo,
+      controle, historico: copia.historico, excluidoEm: new Date().toISOString(), excluidoPor: N.usuario().nome,
+    };
+    RG.download(new Blob([JSON.stringify(conteudo, null, 2)], { type: 'application/json' }), nome);
+  }
+
+  /** Exclusão definitiva, só para o contador (master) e confirmada com a senha dele. Resolve true se excluiu. */
+  async function excluir(m) {
+    if (!N.ehMaster()) { RG.toast('Somente o contador (master) pode excluir relatórios.', 'erro'); return false; }
+    const senha = h('input', { type: 'password', name: 'senha', required: true, autocomplete: 'current-password' });
+    const progresso = h('p', { class: 'help', 'aria-live': 'polite' });
+    const r = await UI.dialogo({
+      titulo: 'Excluir relatório definitivamente',
+      corpo: [
+        h('p', {}, h('strong', {}, `${tituloRel(m)} – ${m.exercicio}`), ` · ${N.STATUS[m.status] || m.status}`),
+        h('div', { class: 'notice warn' }, 'O relatório será apagado do servidor, com o conteúdo, o histórico e todas as versões, e não poderá ser recuperado pela plataforma. Para apenas tirá-lo da lista, use “Arquivar”.'),
+        h('p', { class: 'help' }, 'Antes de apagar, o sistema baixa para este computador uma cópia (.json) com o conteúdo e o histórico. A exclusão fica registrada no log de auditoria.'),
+        h('label', { class: 'field full' }, h('span', { class: 'lbl' }, 'Para confirmar, digite a sua senha de contador (master)'), senha),
+        progresso,
+      ],
+      botoes: [{ rotulo: 'Cancelar', valor: null }, { rotulo: 'Excluir definitivamente', valor: true, perigo: true, enviar: true }],
+      aoAbrir: () => senha.focus(),
+      validar: async () => {
+        try {
+          await N.excluirRelatorio(m, senha.value, { aoCopia: (c) => baixarCopia(m, c), aoProgresso: (t) => { progresso.textContent = t; } });
+        } catch (e) { progresso.textContent = ''; return e.message; }
+        return null;
+      },
+    });
+    if (r) RG.toast(`Relatório ${tituloRel(m)} – ${m.exercicio} excluído. A cópia de segurança foi baixada.`);
+    return !!r;
   }
 
   // ---------- Página inicial: relatórios ----------
@@ -241,23 +310,24 @@
         h('div', { class: 'rep-meta' },
           m.ordenadorNome ? `Ordenador: ${m.ordenadorNome}` : 'Ordenador não informado',
           ` · Gerente(s) de GAF: ${nomesGerentes(m) || 'nenhum vinculado'}`),
-        h('div', { class: 'rep-situacao' }, UI.selo(m.status), N.atrasado(m) ? UI.seloAtraso() : null, m.arquivado ? h('span', { class: 'selo' }, 'Arquivado') : null,
+        h('div', { class: 'rep-situacao' }, UI.selo(m.status), N.atrasado(m) ? UI.seloAtraso() : null,
+          m.excluindo ? h('span', { class: 'selo atraso' }, 'Exclusão incompleta') : m.arquivado ? h('span', { class: 'selo' }, 'Arquivado') : null,
           UI.barraSecoes(m, true), pendencias(m)),
         h('div', { class: 'rep-meta' }, `Última edição: ${ultimaEdicao(m)}`, prazo ? ` · Prazo: ${prazo}` : '')),
       h('div', { class: 'rep-actions' },
         h('a', { class: 'btn primary small', href: `#/r/${m.id}/capa` }, 'Abrir'),
-        h('a', { class: 'btn small', href: `#/r/${m.id}/historico` }, 'Histórico'),
-        master ? h('button', { type: 'button', class: 'btn small', onclick: () => alterarPrazo(m) }, 'Prazo') : null,
-        master ? h('button', { type: 'button', class: 'btn small' + (m.arquivado ? '' : ' danger'), onclick: () => arquivar(m) }, m.arquivado ? 'Desarquivar' : 'Arquivar') : null));
+        m.excluindo ? null : h('a', { class: 'btn small', href: `#/r/${m.id}/historico` }, 'Histórico'),
+        master && !m.arquivado ? h('button', { type: 'button', class: 'btn small', onclick: () => alterarPrazo(m) }, 'Prazo') : null,
+        master && !m.excluindo ? h('button', { type: 'button', class: 'btn small', onclick: () => arquivar(m) }, m.arquivado ? 'Desarquivar' : 'Arquivar') : null,
+        master ? h('button', { type: 'button', class: 'btn small danger', onclick: () => excluir(m) }, m.excluindo ? 'Concluir exclusão' : 'Excluir') : null));
   }
 
   function renderRelatorios($app) {
     document.title = 'Relatórios – Relatório de Gestão';
     const master = N.ehMaster();
-    let est = null, exercicio = null, verArquivados = false;
+    let est = null, exercicio = null;
     const selEx = seletorExercicio((v) => { exercicio = v; desenhar(); });
     const corpo = h('div', {}, UI.carregando());
-    const chkArq = master ? h('label', { class: 'check' }, h('input', { type: 'checkbox', onchange: (e) => { verArquivados = e.target.checked; desenhar(); } }), h('span', {}, 'Mostrar arquivados')) : null;
     $app.innerHTML = '';
     $app.append(RG.acesso.topo('relatorios'), h('main', { class: 'pagina' },
       h('div', { class: 'pag-cab' },
@@ -270,7 +340,7 @@
           h('label', { class: 'inline' }, 'Exercício ', selEx),
           master ? h('button', { type: 'button', class: 'btn primary', onclick: () => (est && pronto(est) ? dialogoNovo(est, exercicio) : RG.toast('Aguarde: carregando os dados…')) }, '+ Novo relatório') : null,
           master ? h('button', { type: 'button', class: 'btn', onclick: () => (est && pronto(est) ? dialogoLote(est, exercicio) : RG.toast('Aguarde: carregando os dados…')) }, 'Criar relatórios em lote') : null)),
-      chkArq, corpo), rodape());
+      corpo), rodape());
 
     function desenhar() {
       if (!est) return;
@@ -278,8 +348,9 @@
       if (!pronto(est)) return;
       if (exercicio == null) exercicio = exercicioInicial(est);
       selEx.atualizar(exerciciosDisponiveis(est), exercicio);
-      const lista = est.relatorios.filter((m) => m.exercicio === exercicio && (verArquivados || !m.arquivado))
-        .sort((a, b) => tituloRel(a).localeCompare(tituloRel(b), 'pt-BR'));
+      const porUG = (a, b) => tituloRel(a).localeCompare(tituloRel(b), 'pt-BR');
+      const lista = est.relatorios.filter((m) => m.exercicio === exercicio && !m.arquivado).sort(porUG);
+      const arquivados = master ? est.relatorios.filter((m) => m.exercicio === exercicio && m.arquivado).sort(porUG) : [];
       const semRel = est.ugs.filter((u) => u.ativo && !est.relatorios.some((r) => r.ugId === u.id && r.exercicio === exercicio));
       corpo.innerHTML = '';
       corpo.append(h('section', { class: 'rep-list' },
@@ -293,6 +364,12 @@
           h('div', { class: 'chips' }, semRel.map((u) => master
             ? h('button', { type: 'button', class: 'chip', title: 'Criar o relatório desta UG', onclick: () => dialogoNovo(est, exercicio, u.id) }, `+ ${rotuloUG(u)}`)
             : h('span', { class: 'chip' }, `${rotuloUG(u)} – aguardando o contador criar o relatório`)))));
+      }
+      if (arquivados.length) {
+        corpo.append(h('section', { class: 'rep-list arquivados' },
+          h('h2', {}, `Arquivados – ${exercicio} (${arquivados.length})`),
+          h('p', { class: 'help' }, 'Relatórios arquivados não aparecem para os gerentes nem no acompanhamento. Desarquive para voltar a usá-los, ou exclua definitivamente (pede a sua senha).'),
+          arquivados.map((m) => cartao(m, master))));
       }
     }
 
@@ -476,5 +553,5 @@
       semGerente.length ? h('div', { class: 'notice warn' }, `UGs ativas sem gerente de GAF vinculado: ${semGerente.map(rotuloUG).join('; ')}. Vincule um gerente no menu UGs.`) : null);
   }
 
-  RG.painel = { renderRelatorios, renderAcompanhamento, novoDaUG };
+  RG.painel = { renderRelatorios, renderAcompanhamento, novoDaUG, excluir, arquivar };
 })(window.RG = window.RG || {});

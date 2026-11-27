@@ -509,6 +509,59 @@
     }));
   }
 
+  /** Confirma a senha do usuário conectado (exigida para a exclusão definitiva). */
+  async function confirmarSenha(senha) {
+    const u = auth.currentUser;
+    try {
+      await u.reauthenticateWithCredential(firebase.auth.EmailAuthProvider.credential(u.email, senha));
+    } catch (e) {
+      if (['auth/wrong-password', 'auth/invalid-credential', 'auth/invalid-login-credentials', 'auth/missing-password'].includes(e.code)) throw new Error('Senha incorreta.');
+      throw erro(e);
+    }
+  }
+
+  /**
+   * Exclusão definitiva (só master, com a senha): entrega a cópia de segurança (conteúdo e histórico) em
+   * ev.aoCopia, marca o relatório como "em exclusão", apaga as subcoleções em lotes e, por último, apaga o
+   * controle e registra o fato no log. Se for interrompida, pode ser concluída depois pelo mesmo caminho.
+   */
+  async function excluirRelatorio(meta, senha, ev) {
+    ev = ev || {};
+    const progresso = (t) => { if (ev.aoProgresso) ev.aoProgresso(t); };
+    if (!usuario || usuario.perfil !== 'master') throw new Error('Somente o contador (master) pode excluir relatórios.');
+    await confirmarSenha(senha);
+    const relId = meta.id;
+    const ref = db.doc('relatorios/' + relId);
+    try {
+      progresso('Preparando a cópia de segurança…');
+      const c = await ref.collection('conteudo').doc('atual').get();
+      const hs = await ref.collection('historico').orderBy('em').get();
+      if (ev.aoCopia) ev.aoCopia({ conteudo: c.exists ? prepararDados(c.data().dadosJSON, relId) : null, historico: hs.docs.map(docDados) });
+      await revisarMeta(relId, (m) => (m.excluindo ? null : {
+        campos: { excluindo: true, arquivado: true },
+        historico: { tipo: 'exclusao', resumo: 'Exclusão definitiva iniciada pelo contador' },
+      }));
+      let apagados = 0;
+      for (const sub of ['presenca', 'historico', 'versoes', 'versoesDados', 'conteudo']) {
+        for (;;) {
+          const s = await ref.collection(sub).limit(400).get();
+          if (s.empty) break;
+          const b = db.batch();
+          s.docs.forEach((d) => b.delete(d.ref));
+          await b.commit();
+          apagados += s.size;
+          progresso(`Excluindo… ${apagados} registro(s) apagado(s)`);
+        }
+      }
+      const b = db.batch();
+      b.delete(ref);
+      b.set(novoLog(), logDoc('relatorio_excluido',
+        `Excluiu definitivamente o relatório ${tituloMeta(meta)} (situação: ${STATUS[meta.status] || meta.status}; ${meta.rev || 0} revisão(ões); ${apagados} registro(s) apagado(s))`,
+        { relId, ugId: meta.ugId, exercicio: meta.exercicio }));
+      await b.commit();
+    } catch (e) { throw erro(e); }
+  }
+
   // ---------- Sessão de edição de um relatório ----------
 
   /**
@@ -565,12 +618,13 @@
     // ----- permissões e estado -----
     const souGerente = () => (meta.gerentes || []).includes(usuario.uid);
     function podeEditar() {
-      if (fechada || meta.arquivado) return false;
+      if (fechada || meta.arquivado || meta.excluindo) return false;
       if (usuario.perfil === 'master') return meta.status !== 'aprovado';
       return souGerente() && STATUS_EDITAVEL.includes(meta.status);
     }
     function motivoBloqueio() {
-      if (meta.arquivado) return 'Relatório arquivado.';
+      if (meta.excluindo) return 'Relatório em exclusão.';
+      if (meta.arquivado) return 'Relatório arquivado: desarquive-o para editar.';
       if (meta.status === 'aprovado') return usuario.perfil === 'master' ? 'Relatório aprovado: reabra-o para editar.' : 'Relatório aprovado pelo contador.';
       if (meta.status === 'enviado') return 'Relatório enviado ao contador: cancele o envio para editar.';
       if (!souGerente() && usuario.perfil !== 'master') return 'Você não está mais vinculado a esta UG.';
@@ -901,7 +955,7 @@
 
     // ----- ouvintes em tempo real -----
     const pararMeta = refMeta.onSnapshot((s) => {
-      if (!s.exists) return;
+      if (!s.exists) { if (!fechada) avisar('aoErro', 'Este relatório foi excluído pelo contador.'); return; }
       const podia = podeEditar();
       const statusAntes = meta.status;
       const m = docDados(s);
@@ -993,6 +1047,7 @@
     assinarUsuarios, criarUsuario, atualizarUsuario, enviarRedefinicao, vincularGerente,
     assinarUGs, salvarUG,
     assinarRelatorios, existeRelatorio, lerConteudo, criarRelatorio, arquivar, definirPrazo, abrirRelatorio,
+    confirmarSenha, excluirRelatorio,
     calcularProgresso, atrasado, mensagem,
   };
 })(window.RG = window.RG || {});

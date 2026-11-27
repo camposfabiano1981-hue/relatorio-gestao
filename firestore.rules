@@ -12,7 +12,9 @@ rules_version = '2';
 // Garantias:
 //   - cada alteração de um relatório incrementa "rev" e só é aceita se, na mesma operação,
 //     for gravado o registro "historico/rev-N" com o autor e a hora do servidor;
-//   - histórico, versões e logs não podem ser alterados nem excluídos pela aplicação;
+//   - histórico, versões e logs não podem ser alterados nem excluídos pela aplicação, exceto na
+//     exclusão definitiva de um relatório pelo contador (marcada antes em "excluindo" e
+//     registrada no log de auditoria, que nunca é apagado);
 //   - depois de enviado ao contador, o gerente não altera mais o conteúdo
 //     (o contador pode devolver para ajustes ou aprovar).
 // =====================================================================================
@@ -144,6 +146,11 @@ service cloud.firestore {
       return status in ['nao_iniciado', 'em_preenchimento', 'devolvido'];
     }
 
+    // Relatório arquivado ou em exclusão não aceita alterações do gerente.
+    function abertoAoGerente(meta) {
+      return meta.get('arquivado', false) != true && meta.get('excluindo', false) != true;
+    }
+
     match /relatorios/{relId} {
 
       function caminhoMeta() {
@@ -165,6 +172,11 @@ service cloud.firestore {
       // Contador ou gerente vinculado ao relatório.
       function participante() {
         return master() || gerenteDe(get(caminhoMeta()).data);
+      }
+
+      // Exclusão definitiva em andamento (só o contador apaga os registros do relatório).
+      function emExclusao() {
+        return master() && get(caminhoMeta()).data.get('excluindo', false) == true;
       }
 
       function carimboAtualizacao() {
@@ -193,6 +205,7 @@ service cloud.firestore {
             'ultimaVersaoEm', 'enviadoEm', 'enviadoPor', 'enviadoPorNome'])
           && carimbosDoGerente()
           && nomesDoGerente()
+          && abertoAoGerente(resource.data)
           && (
             // preenchimento (o primeiro salvamento passa o status para "em preenchimento")
             (editavel(antes) && depois in [antes, 'em_preenchimento']
@@ -225,7 +238,8 @@ service cloud.firestore {
         && novo().exercicio == resource.data.exercicio
         && (master() || (gerenteDe(resource.data) && atualizacaoDoGerente()));
 
-      allow delete: if false;
+      // Exclusão definitiva: só o contador, depois de marcar o relatório como "em exclusão".
+      allow delete: if master() && resource.data.get('excluindo', false) == true;
 
       match /conteudo/{docId} {
         allow read: if participante();
@@ -245,9 +259,10 @@ service cloud.firestore {
           && getAfter(caminhoMeta()).data.rev == get(caminhoMeta()).data.rev + 1
           && carimboAtualizacao()
           && textoAte(novo().dadosJSON, 1000000)
-          && (master() || (gerenteDe(get(caminhoMeta()).data) && editavel(get(caminhoMeta()).data.status)));
+          && (master() || (gerenteDe(get(caminhoMeta()).data) && editavel(get(caminhoMeta()).data.status)
+            && abertoAoGerente(get(caminhoMeta()).data)));
 
-        allow delete: if false;
+        allow delete: if emExclusao();
       }
 
       match /historico/{entradaId} {
@@ -266,7 +281,8 @@ service cloud.firestore {
             || (!entradaId.matches('rev-.*') && !('rev' in novo()) && novo().tipo in ['exportacao', 'versao_salva'] && participante())
           );
 
-        allow update, delete: if false;
+        allow update: if false;
+        allow delete: if emExclusao();
       }
 
       match /versoes/{versaoId} {
@@ -275,7 +291,8 @@ service cloud.firestore {
           && novo().nome == perfilDe(request.auth.uid).nome
           && (master() || gerenteDe(getAfter(caminhoMeta()).data))
           && existsAfter(/databases/$(database)/documents/relatorios/$(relId)/versoesDados/$(versaoId));
-        allow update, delete: if false;
+        allow update: if false;
+        allow delete: if emExclusao();
       }
 
       // A cópia precisa ser idêntica ao conteúdo gravado (antes ou depois da operação).
@@ -289,14 +306,15 @@ service cloud.firestore {
             || (novo().rev == get(caminhoConteudo()).data.rev
               && novo().dadosJSON == get(caminhoConteudo()).data.dadosJSON)
           );
-        allow update, delete: if false;
+        allow update: if false;
+        allow delete: if emExclusao();
       }
 
       match /presenca/{uid} {
         allow read: if participante();
         allow create, update: if request.auth.uid == uid && carimbado(novo()) && participante()
           && novo().nome == perfilDe(request.auth.uid).nome;
-        allow delete: if autenticado() && request.auth.uid == uid;
+        allow delete: if (autenticado() && request.auth.uid == uid) || emExclusao();
       }
     }
 
